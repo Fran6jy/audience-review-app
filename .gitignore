@@ -7,6 +7,7 @@ followers*.json
 following*.json
 profiles*.json
 profile-evidence*.json
+private-instagram-import/
 node_modules/
 dist/
 .vercel/
