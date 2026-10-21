@@ -23,6 +23,15 @@ To use your own data, export your Instagram information in JSON format. In **Dat
 - English and Korean labels on the Analysis and Action plans screens.
 - Manual action plans include only explicitly marked removal candidates, skip already-pending accounts, preserve protected accounts, and record user-reported results or cancellation. Plans are saved in the JSON session backup.
 - Responsive desktop and mobile layouts.
+- A local visible-browser companion can collect public profile counts into the optional observation format and prepare a 1–3 account removal test. It never handles your password or uploads observations to Vercel.
+
+## Local Instagram companion
+
+The hosted app remains a private browser workspace. For a test on an account you own, the separate local companion uses an installed Chrome browser; it does not use hidden Instagram endpoints. Use `npm run companion -- enrich --owner YOUR_USERNAME --limit 3` to try public-profile observation on three followers. The source defaults to `private-instagram-import/followers_1.json`; output is `private-instagram-import/profile-observations.json`. Import that output under **Data sources** in the web app. Missing or private fields stay missing.
+
+For a removal test, explicitly mark the intended followers as **Removal candidate** in the app. In **Action plans**, enter the account owner, check only 1–3 candidates, and download the approval packet. Run `npm run companion -- remove --owner YOUR_USERNAME --approval PATH_TO_PACKET` for a dry run. Only `--execute --session FRESH_BACKUP.json` allows clicking Instagram's Remove control: save a fresh session backup from **Data sources** immediately before execution, so protected or cancelled accounts remain blocked. Each account also requires typing `REMOVE @username` in the local terminal. The companion stops on ambiguous UI, login challenges, or uncertainty. It writes an action journal in `private-instagram-import/`; import that journal back into **Action plans**. A later complete follower export can be compared with `npm run companion -- reconcile --journal PATH_TO_JOURNAL --followers NEW_FOLLOWERS_JSON`.
+
+The first use opens a separate visible Chrome profile in `.local-instagram-browser/`. If Instagram asks for login, the account owner must log in there and rerun the command. Never send the approval packet, browser profile, or action journal to a public repo. Automation against a changing third-party UI is inherently brittle; a successful click is logged as a UI action, not verified follower removal.
 
 ## Optional profile evidence format
 
@@ -32,7 +41,7 @@ The app does not collect this information itself and does not independently veri
 
 ## Boundaries
 
-The app does not log into Instagram, sync followers in the background, fetch live profile data, verify actions, or remove followers. Action plans are instructions for a human owner; `user_reported_done` is not proof of removal. You still need to request a fresh export from Instagram when you want new data. The export does not provide enough evidence for bot claims. A non-mutual follow is not a suspicious signal by itself. The Korean translation currently covers the new analysis and action-plan screens, not the entire application.
+The hosted app does not log into Instagram, sync followers in the background, verify actions, or remove followers. Its separate local companion can gather visible public counts and attempt an explicitly approved removal test in the owner's own browser session, but it is not an official Instagram API integration and has not been proven against a live removal yet. `user_reported_done` is not proof of removal. You still need a fresh export to compare follower membership later. The export alone does not provide enough evidence for bot claims. A non-mutual follow is not a suspicious signal by itself. The Korean translation currently covers the new analysis and action-plan screens, not the entire application.
 
 Account data and notes remain in the browser profile's local storage unless you export them. This is convenient on a personal device but not appropriate on a shared computer. **Clear local workspace** removes the saved data. The app includes no analytics scripts or automatic third-party requests. Opening a profile link will navigate to Instagram.
 

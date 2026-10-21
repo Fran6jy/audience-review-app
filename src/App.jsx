@@ -12,6 +12,7 @@ import {
 import { expandInstagramSelection } from './lib/import.js';
 import PocView from './PocView.jsx';
 import { createReviewJob, updateReviewItem, cancelReviewJob } from './lib/poc.js';
+import { validateApproval, applyActionJournal } from './lib/companion.js';
 
 const labels = {
   unreviewed: 'Unreviewed', review: 'Needs review', candidate: 'Removal candidate',
@@ -204,6 +205,32 @@ export default function App() {
     setWorkspace(current => ({ ...current, jobs: (current.jobs || []).map(job => job.id === jobId ? cancelReviewJob(job) : job) }));
     setNotice('Pending manual actions cancelled.');
   }
+  function createApproval(owner, targets) {
+    try {
+      if (workspace.mode !== 'import') throw new Error('Import a real follower list first.');
+      const selected = new Set(targets.map(name => name.toLowerCase()));
+      const people = workspace.people.filter(person => selected.has(person.username.toLowerCase()) && person.status === 'candidate');
+      if (people.length !== selected.size) throw new Error('Every target must be an explicitly selected removal candidate.');
+      const job = { ...createReviewJob(people, workspace.jobs || []), owner };
+      const packet = { version: 1, id: job.id, owner, approvedAt: job.createdAt, targets: job.items.map(item => item.username) };
+      validateApproval(packet, owner);
+      setWorkspace(current => ({ ...current, jobs: [...(current.jobs || []), job] }));
+      download(`removal-approval-${job.id}.json`, JSON.stringify(packet, null, 2), 'application/json');
+      setNotice(`Approval packet created for ${packet.targets.length} exact accounts. Nothing has been removed.`);
+    } catch (error) { setNotice(error.message); }
+  }
+  async function importJournal(file) {
+    if (!file) return;
+    try {
+      if (file.size > 1000000) throw new Error('Action journal is too large.');
+      const journal = JSON.parse(await file.text());
+      const job = (workspace.jobs || []).find(item => item.id === journal.id);
+      if (!job) throw new Error('No matching approved plan exists in this workspace.');
+      const updated = applyActionJournal(job, journal);
+      setWorkspace(current => ({ ...current, jobs: (current.jobs || []).map(item => item.id === job.id ? updated : item) }));
+      setNotice('Action journal imported. UI completion is not proof of follower removal; compare a later export.');
+    } catch (error) { setNotice(error.message); }
+  }
 
   return <div className="app">
     <header className="topbar">
@@ -238,7 +265,7 @@ export default function App() {
             <section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">02 / OPTIONAL PROFILE DATA</p><h2>Profile observations</h2></div><SlidersHorizontal size={21} strokeWidth={1.5} /></div><p className="data-description">Import a JSON array of profile observations from a source you are authorised to use. Only usernames already in your follower list will be matched.</p><input ref={evidenceInput} type="file" accept=".json,application/json" hidden onChange={event => handleEvidence(event.target.files[0])} /><button className="upload-button" onClick={() => evidenceInput.current.click()}><FileUp size={17} /> Select profile JSON <ArrowRight size={16} /></button><button className="text-action" onClick={() => download('profile-example.json', JSON.stringify([{ username: 'sample_account', followers_count: 120, following_count: 95, posts_count: 14, bio: 'Example only', is_private: false, is_verified: false, last_post_date: '2026-10-01' }], null, 2), 'application/json')}>Download example format <ArrowUpRight size={15} /></button><div className="source-summary"><Field label="Matched accounts" value={`${formatNumber(enriched)} / ${formatNumber(people.length)}`} /><Field label="Source" value={workspace.evidenceSource || 'Not supplied'} /></div></section></div>
           <div className="data-grid lower"><section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">03 / EXPORT</p><h2>Keep a copy</h2></div><Download size={21} strokeWidth={1.5} /></div><p className="data-description">CSV includes decisions and supplied observations. A session JSON restores the full workspace later.</p><div className="export-actions"><button className="primary-button" onClick={() => exportAll()}><Download size={16} /> Export CSV</button><button className="secondary-button" onClick={() => download('audience-review-session.json', JSON.stringify(workspace, null, 2), 'application/json')}><FileJson size={16} /> Save session</button><input ref={restoreInput} type="file" accept=".json,application/json" hidden onChange={event => handleRestore(event.target.files[0])} /><button className="secondary-button" onClick={() => restoreInput.current.click()}><RotateCcw size={16} /> Restore session</button></div></section><section className="surface data-main privacy-surface"><div className="surface-head"><div><p className="eyebrow">PRIVACY</p><h2>Local workspace</h2></div><LockKeyhole size={21} strokeWidth={1.5} /></div><p className="data-description">Your files and notes are stored in this browser profile. No account login, scraping, or automatic follower removal.</p><button className="danger-button" onClick={clearWorkspace}>Clear local workspace</button></section></div>
         </>}
-        {(view === 'analysis' || view === 'operations') && <PocView mode={view} workspace={workspace} locale={locale} setLocale={setLocale} onSelect={setSelected} onPlan={createPlan} onResult={recordResult} onCancel={cancelPlan} />}
+        {(view === 'analysis' || view === 'operations') && <PocView mode={view} workspace={workspace} locale={locale} setLocale={setLocale} onSelect={setSelected} onPlan={createPlan} onResult={recordResult} onCancel={cancelPlan} onApproval={createApproval} onImportJournal={importJournal} />}
       </main>
     </div>
     {selectedPerson && <div className="drawer-backdrop" onClick={() => setSelected(null)}><aside className="drawer" role="dialog" aria-modal="true" aria-label={`Account ${selectedPerson.username}`} onClick={event => event.stopPropagation()}><div className="drawer-top"><span>ACCOUNT DETAILS</span><button onClick={() => setSelected(null)} aria-label="Close details"><X size={20} /></button></div><div className="drawer-person"><Avatar name={selectedPerson.username} size="large" /><div><h2>@{selectedPerson.username}</h2><span>Instagram account</span></div></div><div className="drawer-body"><div className="drawer-section"><h3>Relationship</h3><Field label="Follower export" value="Present" /><Field label="Follows you back" value={selectedPerson.mutual === null ? 'Unknown' : selectedPerson.mutual ? 'Yes' : 'No'} /></div><div className="drawer-section"><h3>Profile observations</h3>{selectedPerson.profile ? <><Field label="Followers" value={selectedPerson.profile.followers_count?.toLocaleString()} /><Field label="Following" value={selectedPerson.profile.following_count?.toLocaleString()} /><Field label="Posts" value={selectedPerson.profile.posts_count?.toLocaleString()} /><Field label="Bio" value={selectedPerson.profile.bio === '' ? 'Empty in supplied data' : selectedPerson.profile.bio} /><Field label="Private" value={selectedPerson.profile.is_private === null ? null : selectedPerson.profile.is_private ? 'Yes' : 'No'} /><Field label="Verified" value={selectedPerson.profile.is_verified === null ? null : selectedPerson.profile.is_verified ? 'Yes' : 'No'} /><Field label="Latest supplied post" value={selectedPerson.profile.last_post_date} /><small>Source: {workspace.evidenceSource || 'Imported file'}</small></> : <p className="text-muted">No profile data supplied for this account.</p>}</div><div className="drawer-section"><h3>Review cues</h3>{reviewCues(selectedPerson.profile).length ? <ul className="cue-list">{reviewCues(selectedPerson.profile).map(cue => <li key={cue}>{cue}</li>)}</ul> : <p className="text-muted">No cues from available observations.</p>}<p className="caution"><CircleHelp size={15} /> These are context, not a fake-account verdict.</p></div><div className="drawer-section"><h3>Your decision</h3><div className="decision-grid">{STATUSES.map(status => <button key={status} className={selectedPerson.status === status ? 'selected' : ''} onClick={() => changeStatus([selectedPerson.username.toLowerCase()], status)}>{labels[status]}</button>)}</div></div><div className="drawer-section"><h3>Private note</h3><textarea value={selectedPerson.note} maxLength={2000} onChange={event => changeNote(selectedPerson.username, event.target.value)} placeholder="Add context for your decision" /></div></div><div className="drawer-bottom"><a href={`https://www.instagram.com/${encodeURIComponent(selectedPerson.username)}/`} target="_blank" rel="noopener noreferrer">Open on Instagram <ArrowUpRight size={16} /></a><span>Manual review only</span></div></aside></div>}

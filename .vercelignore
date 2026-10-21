@@ -1,5 +1,9 @@
 *.zip
 private-instagram-import/
+.local-instagram-browser/
+action-journal*.json
+removal-approval*.json
+profile-observations.json
 audience-review-session.json
 followers*.json
 following*.json

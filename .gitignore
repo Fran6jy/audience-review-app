@@ -8,6 +8,10 @@ following*.json
 profiles*.json
 profile-evidence*.json
 private-instagram-import/
+.local-instagram-browser/
+action-journal*.json
+removal-approval*.json
+profile-observations.json
 node_modules/
 dist/
 .vercel/

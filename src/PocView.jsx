@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowRight, ExternalLink, ShieldCheck, X } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { ArrowRight, Download, ExternalLink, FileUp, ShieldCheck, X } from 'lucide-react';
 import { assessFollower, coverageReport } from './lib/poc.js';
 
 const copy = {
   en: {
     analysis: 'Follower analysis', operations: 'Action plans',
     analysisIntro: 'Review transparent signals. A score is a triage aid, not a probability of fraud.',
-    operationsIntro: 'Approved candidates are prepared here. Instagram actions are not automated or verified by this app.',
+    operationsIntro: 'Prepare exact targets here. The separate local companion can attempt approved actions; this browser app cannot verify them.',
     dataCoverage: 'Data coverage', source: 'Source', imported: 'Imported',
     account: 'Account', classification: 'Assessment', score: 'Score', confidence: 'Confidence', reason: 'Reason',
     all: 'All assessments', search: 'Search accounts', open: 'Review account',
@@ -14,17 +14,17 @@ const copy = {
     none: 'None', low: 'Low', medium: 'Medium', noReason: 'No significant signals in supplied observations',
     fields: 'Fields available', noObservations: 'No profile observations supplied', coverageNote: 'Counts reflect imported observations, not live access. Private accounts and non-mutual follows are never suspicious by themselves.',
     proposed: 'Removal candidates', protected: 'Protected accounts', plan: 'Create manual action plan',
-    planInfo: 'The plan records approval only. Open Instagram to perform each removal yourself, then record what happened. Do not use this as proof of a completed removal.',
+    planInfo: 'Manual plans record your decisions only. For a local removal test, select 1–3 candidates below and import the resulting action journal.',
     noCandidates: 'Mark accounts as removal candidates in Audience before creating a plan.',
     noJobs: 'No action plans yet.', job: 'Plan', cancel: 'Cancel pending actions',
     pending: 'Approved, not attempted', done: 'User reported done', failed: 'Failed', unconfirmed: 'Unconfirmed', cancelled: 'Cancelled',
     openProfile: 'Open Instagram profile', record: 'Record result',
-    available: 'Available', missing: 'Missing',
+    available: 'Available', missing: 'Missing', owner: 'Instagram account owner', localTest: 'Local removal test', selectTest: 'Select 1–3 approved followers. The packet authorises only these accounts; it performs no action by itself.', packet: 'Download approval packet', importJournal: 'Import action journal',
   },
   ko: {
     analysis: '팔로워 분석', operations: '작업 계획',
     analysisIntro: '근거를 확인하세요. 점수는 검토 순서를 돕는 지표이며 가짜 계정일 확률이 아닙니다.',
-    operationsIntro: '승인된 후보를 정리합니다. 이 앱은 Instagram 작업을 자동 실행하거나 결과를 검증하지 않습니다.',
+    operationsIntro: '승인된 계정을 지정합니다. 별도의 로컬 도구로 작업을 시도할 수 있지만 이 웹 앱은 결과를 검증하지 않습니다.',
     dataCoverage: '데이터 범위', source: '출처', imported: '가져온 시각',
     account: '계정', classification: '평가', score: '점수', confidence: '신뢰도', reason: '근거',
     all: '모든 평가', search: '계정 검색', open: '계정 검토',
@@ -32,12 +32,12 @@ const copy = {
     none: '없음', low: '낮음', medium: '보통', noReason: '제공된 관찰 자료에서 뚜렷한 신호 없음',
     fields: '사용 가능한 항목', noObservations: '프로필 관찰 자료가 제공되지 않았습니다', coverageNote: '수치는 실시간 접속이 아닌 가져온 자료를 기준으로 합니다. 비공개 계정이나 맞팔이 아닌 계정만으로 의심하지 않습니다.',
     proposed: '삭제 후보', protected: '보호된 계정', plan: '수동 작업 계획 만들기',
-    planInfo: '계획은 승인만 기록합니다. Instagram에서 직접 삭제한 뒤 결과를 기록하세요. 완료 증거로 사용하지 마세요.',
+    planInfo: '수동 계획은 결정만 기록합니다. 로컬 삭제 테스트는 아래에서 후보 1~3명을 선택한 뒤 작업 기록을 가져오세요.',
     noCandidates: '계획을 만들기 전에 팔로워 목록에서 삭제 후보를 지정하세요.',
     noJobs: '작업 계획이 없습니다.', job: '계획', cancel: '대기 작업 취소',
     pending: '승인됨, 미실행', done: '사용자가 완료했다고 보고함', failed: '실패', unconfirmed: '미확인', cancelled: '취소됨',
     openProfile: 'Instagram 프로필 열기', record: '결과 기록',
-    available: '있음', missing: '없음',
+    available: '있음', missing: '없음', owner: 'Instagram 계정 소유자', localTest: '로컬 삭제 테스트', selectTest: '승인된 팔로워 1~3명을 선택하세요. 승인 파일 자체는 작업을 실행하지 않습니다.', packet: '승인 파일 다운로드', importJournal: '작업 기록 가져오기',
   },
 };
 
@@ -47,12 +47,20 @@ const coverageLabels = {
   average_likes: 'Average likes', average_comments: 'Average comments', sample_size: 'Post sample size',
 };
 const PAGE_SIZE = 30;
+const journalLabels = {
+  approved: 'Approved', dry_run_ready: 'Dry run ready', not_found: 'Not found',
+  click_started: 'Action started', ui_action_completed: 'UI action completed, unverified',
+  absent_in_later_export: 'Absent in later export', still_in_later_export: 'Still in later export',
+};
 
-export default function PocView({ mode, workspace, locale, setLocale, onSelect, onPlan, onResult, onCancel }) {
+export default function PocView({ mode, workspace, locale, setLocale, onSelect, onPlan, onResult, onCancel, onApproval, onImportJournal }) {
   const t = copy[locale];
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [owner, setOwner] = useState('');
+  const [testTargets, setTestTargets] = useState(new Set());
+  const journalInput = useRef(null);
   const coverage = useMemo(() => coverageReport(workspace.people), [workspace.people]);
   const assessments = useMemo(() => workspace.people.map(person => ({ person, result: assessFollower(person) })), [workspace.people]);
   const filtered = assessments.filter(({ person, result }) => person.username.toLowerCase().includes(query.trim().toLowerCase()) && (filter === 'all' || result.label === filter));
@@ -74,7 +82,8 @@ export default function PocView({ mode, workspace, locale, setLocale, onSelect, 
       <div className="operations-summary"><div><strong>{candidates.length}</strong><span>{t.proposed}</span></div><div><strong>{protectedCount}</strong><span>{t.protected}</span></div><div><strong>{workspace.jobs?.length || 0}</strong><span>{t.job}</span></div></div>
       <div className="operations-lead"><p>{t.planInfo}</p><button className="primary-button" disabled={workspace.mode !== 'import' || !candidates.length} onClick={onPlan}>{t.plan} <ArrowRight size={16} /></button></div>
       {!candidates.length && <p className="poc-empty">{t.noCandidates}</p>}
-      <div className="job-list">{(workspace.jobs || []).slice().reverse().map(job => <section className="job-panel" key={job.id}><div className="job-head"><div><h2>{t.job} · {new Date(job.createdAt).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-GB')}</h2><span>{job.items.length} {t.account.toLowerCase()}</span></div>{job.status !== 'cancelled' && job.items.some(item => item.status === 'approved_pending') && <button onClick={() => onCancel(job.id)}><X size={16} /> {t.cancel}</button>}</div>{job.items.map(item => <div className="job-item" key={item.username}><strong>@{item.username}</strong><span>{({ approved_pending: t.pending, user_reported_done: t.done, failed: t.failed, unconfirmed: t.unconfirmed, cancelled: t.cancelled })[item.status]}</span><a href={`https://www.instagram.com/${encodeURIComponent(item.username)}/`} target="_blank" rel="noopener noreferrer">{t.openProfile} <ExternalLink size={14} /></a>{item.status === 'approved_pending' && <select defaultValue="" aria-label={`${t.record}: ${item.username}`} onChange={event => onResult(job.id, item.username, event.target.value)}><option value="" disabled>{t.record}</option><option value="user_reported_done">{t.done}</option><option value="failed">{t.failed}</option><option value="unconfirmed">{t.unconfirmed}</option></select>}</div>)}</section>)}{!workspace.jobs?.length && <p className="poc-empty">{t.noJobs}</p>}</div>
+      <section className="local-test"><div><h2>{t.localTest}</h2><p>{t.selectTest}</p></div><label>{t.owner}<input value={owner} onChange={event => setOwner(event.target.value.replace(/^@/, ''))} placeholder="account_username" autoComplete="off" /></label><div className="test-targets">{candidates.map(person => <label key={person.username}><input type="checkbox" checked={testTargets.has(person.username.toLowerCase())} onChange={() => setTestTargets(current => { const next = new Set(current); const key = person.username.toLowerCase(); if (next.has(key)) next.delete(key); else if (next.size < 3) next.add(key); return next; })} /> @{person.username}</label>)}</div><div className="test-actions"><button className="secondary-button" disabled={!owner || testTargets.size < 1 || testTargets.size > 3} onClick={() => onApproval(owner, [...testTargets])}><Download size={16} /> {t.packet}</button><input ref={journalInput} type="file" accept=".json,application/json" hidden onChange={event => { onImportJournal(event.target.files[0]); event.target.value = ''; }} /><button className="secondary-button" onClick={() => journalInput.current.click()}><FileUp size={16} /> {t.importJournal}</button></div></section>
+      <div className="job-list">{(workspace.jobs || []).slice().reverse().map(job => <section className="job-panel" key={job.id}><div className="job-head"><div><h2>{t.job} · {new Date(job.createdAt).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-GB')}</h2><span>{job.items.length} {t.account.toLowerCase()}{job.owner ? ` · @${job.owner}` : ''}</span></div>{job.status !== 'cancelled' && job.items.some(item => item.status === 'approved_pending') && <button onClick={() => onCancel(job.id)}><X size={16} /> {t.cancel}</button>}</div>{job.items.map(item => <div className="job-item" key={item.username}><strong>@{item.username}</strong><span>{({ approved_pending: t.pending, user_reported_done: t.done, failed: t.failed, unconfirmed: t.unconfirmed, cancelled: t.cancelled })[item.status] || journalLabels[item.status] || item.status}</span><a href={`https://www.instagram.com/${encodeURIComponent(item.username)}/`} target="_blank" rel="noopener noreferrer">{t.openProfile} <ExternalLink size={14} /></a>{item.status === 'approved_pending' && <select defaultValue="" aria-label={`${t.record}: ${item.username}`} onChange={event => onResult(job.id, item.username, event.target.value)}><option value="" disabled>{t.record}</option><option value="user_reported_done">{t.done}</option><option value="failed">{t.failed}</option><option value="unconfirmed">{t.unconfirmed}</option></select>}{item.events?.length > 0 && <details className="job-events"><summary>Action log ({item.events.length})</summary>{item.events.map((event, index) => <p key={index}><time>{new Date(event.at).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-GB')}</time> · {journalLabels[event.status] || event.status}: {event.detail}</p>)}</details>}</div>)}</section>)}{!workspace.jobs?.length && <p className="poc-empty">{t.noJobs}</p>}</div>
     </>}
   </div>;
 }
