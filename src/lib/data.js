@@ -73,8 +73,8 @@ export async function parseInstagramFiles(files, previous = null) {
     });
   }
   const jobs = (previous?.mode === 'import' ? previous.jobs || [] : []).map(job => {
-    const items = job.items.map(item => item.status === 'approved_pending' && !people.has(item.username.toLowerCase()) ? { ...item, status: 'unconfirmed', updatedAt: new Date().toISOString() } : item);
-    return { ...job, items, status: items.every(item => item.status !== 'approved_pending') ? 'reviewed' : job.status };
+    const items = job.items.map(item => ['approved_pending', 'dry_run_ready'].includes(item.status) && !people.has(item.username.toLowerCase()) ? { ...item, status: 'unconfirmed', updatedAt: new Date().toISOString() } : item);
+    return { ...job, items, status: items.every(item => !['approved_pending', 'dry_run_ready'].includes(item.status)) ? 'reviewed' : job.status };
   });
   return {
     data: { version: 3, mode: 'import', importedAt: new Date().toISOString(), hasFollowing, evidenceSource: previous?.mode === 'import' ? previous.evidenceSource : null, people: [...people.values()].sort((a, b) => a.username.localeCompare(b.username)), jobs },

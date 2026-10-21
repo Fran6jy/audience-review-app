@@ -61,7 +61,7 @@ export function applyActionJournal(job, journal) {
     const latest = events.at(-1);
     return latest ? { ...item, status: latest.status, updatedAt: latest.at, events } : item;
   });
-  return { ...job, items, status: items.every(item => item.status !== 'approved_pending' && item.status !== 'approved') ? 'reviewed' : job.status };
+  return { ...job, items, status: items.every(item => !['approved_pending', 'approved', 'dry_run_ready'].includes(item.status)) ? 'reviewed' : job.status };
 }
 
 export function assertExecutionApproved(workspace, packet, username) {
@@ -70,7 +70,7 @@ export function assertExecutionApproved(workspace, packet, username) {
   const approvedAt = Date.parse(packet.approvedAt);
   if (!Number.isFinite(savedAt) || !Number.isFinite(approvedAt) || savedAt < approvedAt || savedAt > Date.now() + 60000 || Date.now() - savedAt > 10 * 60000) throw new Error('Save a new session backup after approval, within 10 minutes of execution.');
   const job = workspace.jobs.find(item => item.id === packet.id && item.owner?.toLowerCase() === packet.owner.toLowerCase());
-  if (!job || job.status === 'cancelled' || !job.items.some(item => item.username.toLowerCase() === username.toLowerCase() && item.status === 'approved_pending')) throw new Error(`@${username} is not pending in this workspace backup.`);
+  if (!job || job.status === 'cancelled' || !job.items.some(item => item.username.toLowerCase() === username.toLowerCase() && ['approved_pending', 'dry_run_ready'].includes(item.status))) throw new Error(`@${username} is not pending in this workspace backup.`);
   if (!workspace.people.some(person => person.username.toLowerCase() === username.toLowerCase() && person.status === 'candidate')) throw new Error(`@${username} is no longer an approved candidate.`);
   return true;
 }

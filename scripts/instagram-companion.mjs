@@ -113,10 +113,12 @@ async function remove() {
   const prompt = createInterface({ input: stdin, output: stdout });
   try {
     for (const username of targets) {
-      if (!['approved', 'dry_run_ready'].includes(journal.states[username.toLowerCase()])) { console.log(`Skipping @${username}: ${journal.states[username.toLowerCase()]}`); continue; }
+      const retryable = has('execute') ? ['approved', 'dry_run_ready'] : ['approved', 'dry_run_ready', 'not_found'];
+      if (!retryable.includes(journal.states[username.toLowerCase()])) { console.log(`Skipping @${username}: ${journal.states[username.toLowerCase()]}`); continue; }
       await page.goto(`https://www.instagram.com/${owner}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
       checkPage(page);
-      const followersLink = page.locator(`a[href="/${owner}/followers/"]`);
+      const followersLink = page.getByRole('link', { name: /^[\d,.]+ followers$/i });
+      await followersLink.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
       if (await followersLink.count() !== 1) throw new Error('Follower list link not found uniquely; stopped.');
       await followersLink.click();
       const row = await findFollowerRow(page, username);

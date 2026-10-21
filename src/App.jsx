@@ -121,8 +121,8 @@ export default function App() {
       ...current,
       people: current.people.map(person => keys.has(person.username.toLowerCase()) ? { ...person, status } : person),
       jobs: status === 'protected' ? (current.jobs || []).map(job => {
-        const items = job.items.map(item => keys.has(item.username.toLowerCase()) && item.status === 'approved_pending' ? { ...item, status: 'cancelled', updatedAt: new Date().toISOString() } : item);
-        return { ...job, items, status: items.every(item => item.status !== 'approved_pending') ? 'reviewed' : job.status };
+        const items = job.items.map(item => keys.has(item.username.toLowerCase()) && ['approved_pending', 'dry_run_ready'].includes(item.status) ? { ...item, status: 'cancelled', updatedAt: new Date().toISOString() } : item);
+        return { ...job, items, status: items.every(item => !['approved_pending', 'dry_run_ready'].includes(item.status)) ? 'reviewed' : job.status };
       }) : current.jobs,
     }));
     setChecked(new Set());

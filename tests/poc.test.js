@@ -28,4 +28,6 @@ test('manual plans only include approved candidates and prevent duplicates', () 
   assert.equal(updated.items[0].status, 'user_reported_done');
   assert.throws(() => updateReviewItem(updated, 'review_me', 'failed'), /not pending/);
   assert.equal(cancelReviewJob(job).items[0].status, 'cancelled');
+  assert.equal(cancelReviewJob({ ...job, items: [{ username: 'review_me', status: 'dry_run_ready' }] }).items[0].status, 'cancelled');
+  assert.throws(() => createReviewJob(people, [{ ...job, items: [{ username: 'review_me', status: 'dry_run_ready' }] }]), /No new approved/);
 });

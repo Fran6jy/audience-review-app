@@ -55,7 +55,7 @@ export function assessFollower(person, today = new Date()) {
 }
 
 export function createReviewJob(people, existingJobs = [], now = new Date()) {
-  const pending = new Set(existingJobs.filter(job => job.status !== 'cancelled').flatMap(job => job.items.filter(item => item.status === 'approved_pending').map(item => item.username.toLowerCase())));
+  const pending = new Set(existingJobs.filter(job => job.status !== 'cancelled').flatMap(job => job.items.filter(item => ['approved_pending', 'dry_run_ready'].includes(item.status)).map(item => item.username.toLowerCase())));
   const candidates = people.filter(person => person.status === 'candidate' && !pending.has(person.username.toLowerCase()));
   if (!candidates.length) throw new Error('No new approved candidates are available for a plan.');
   return {
@@ -67,7 +67,7 @@ export function createReviewJob(people, existingJobs = [], now = new Date()) {
 }
 
 export function cancelReviewJob(job, now = new Date()) {
-  return { ...job, status: 'cancelled', items: job.items.map(item => item.status === 'approved_pending' ? { ...item, status: 'cancelled', updatedAt: now.toISOString() } : item) };
+  return { ...job, status: 'cancelled', items: job.items.map(item => ['approved_pending', 'dry_run_ready'].includes(item.status) ? { ...item, status: 'cancelled', updatedAt: now.toISOString() } : item) };
 }
 
 export function updateReviewItem(job, username, status, now = new Date()) {
