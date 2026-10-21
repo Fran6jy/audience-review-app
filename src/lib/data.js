@@ -29,7 +29,7 @@ export function makeDemo() {
       last_post_date: index % 12 === 0 ? '2024-02-12' : '2026-09-15',
     } : null,
   }));
-  return { version: 3, mode: 'demo', importedAt: null, hasFollowing: true, evidenceSource: 'Synthetic sample', people };
+  return { version: 3, mode: 'demo', importedAt: null, hasFollowing: true, evidenceSource: 'Synthetic sample', people, jobs: [] };
 }
 
 export function validUsername(value) {
@@ -72,15 +72,22 @@ export async function parseInstagramFiles(files, previous = null) {
       profile: prior?.profile || null,
     });
   }
+  const jobs = (previous?.mode === 'import' ? previous.jobs || [] : []).map(job => {
+    const items = job.items.map(item => item.status === 'approved_pending' && !people.has(item.username.toLowerCase()) ? { ...item, status: 'unconfirmed', updatedAt: new Date().toISOString() } : item);
+    return { ...job, items, status: items.every(item => item.status !== 'approved_pending') ? 'reviewed' : job.status };
+  });
   return {
-    data: { version: 3, mode: 'import', importedAt: new Date().toISOString(), hasFollowing, evidenceSource: previous?.mode === 'import' ? previous.evidenceSource : null, people: [...people.values()].sort((a, b) => a.username.localeCompare(b.username)) },
+    data: { version: 3, mode: 'import', importedAt: new Date().toISOString(), hasFollowing, evidenceSource: previous?.mode === 'import' ? previous.evidenceSource : null, people: [...people.values()].sort((a, b) => a.username.localeCompare(b.username)), jobs },
     errors,
   };
 }
 
 const count = value => Number.isInteger(value) && value >= 0 && value <= 1000000000 ? value : null;
 export function normalizeProfile(record) {
+  const nonNegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1000000000 ? value : null;
   return {
+    user_id: typeof record.user_id === 'string' && /^\d{1,30}$/.test(record.user_id) ? record.user_id : null,
+    display_name: typeof record.display_name === 'string' ? record.display_name.slice(0, 100) : null,
     followers_count: count(record.followers_count),
     following_count: count(record.following_count),
     posts_count: count(record.posts_count),
@@ -88,6 +95,10 @@ export function normalizeProfile(record) {
     is_private: typeof record.is_private === 'boolean' ? record.is_private : null,
     is_verified: typeof record.is_verified === 'boolean' ? record.is_verified : null,
     last_post_date: typeof record.last_post_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(record.last_post_date) ? record.last_post_date : null,
+    average_likes: nonNegative(record.average_likes),
+    average_comments: nonNegative(record.average_comments),
+    sample_size: count(record.sample_size),
+    observed_at: typeof record.observed_at === 'string' && Number.isFinite(Date.parse(record.observed_at)) ? new Date(record.observed_at).toISOString() : null,
   };
 }
 
@@ -133,7 +144,7 @@ function csvCell(value) {
 }
 
 export function exportCsv(workspace, onlyCandidates = false) {
-  const columns = ['username', 'profile_url', 'mutual', 'decision', 'note', 'followers_count', 'following_count', 'posts_count', 'bio', 'is_private', 'is_verified', 'last_post_date'];
+  const columns = ['username', 'profile_url', 'mutual', 'decision', 'note', 'user_id', 'display_name', 'followers_count', 'following_count', 'posts_count', 'bio', 'is_private', 'is_verified', 'last_post_date', 'average_likes', 'average_comments', 'sample_size', 'observed_at'];
   const people = onlyCandidates ? workspace.people.filter(person => person.status === 'candidate') : workspace.people;
   const rows = people.map(person => [
     person.username, `https://www.instagram.com/${person.username}/`, person.mutual === null ? 'unknown' : person.mutual ? 'yes' : 'no', person.status, person.note,
@@ -151,5 +162,5 @@ export function migrate(old) {
     note: typeof person.note === 'string' ? person.note.slice(0, 2000) : '',
     profile: person.profile && typeof person.profile === 'object' ? normalizeProfile(person.profile) : null,
   }));
-  return { version: 3, mode: old.mode === 'import' || old.kind === 'import' ? 'import' : 'demo', importedAt: old.importedAt || null, hasFollowing: old.hasFollowing === true, evidenceSource: old.evidenceSource || null, people };
+  return { version: 3, mode: old.mode === 'import' || old.kind === 'import' ? 'import' : 'demo', importedAt: old.importedAt || null, hasFollowing: old.hasFollowing === true, evidenceSource: old.evidenceSource || null, people, jobs: Array.isArray(old.jobs) ? old.jobs.slice(0, 100) : [] };
 }

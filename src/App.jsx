@@ -3,13 +3,15 @@ import {
   Activity, ArrowDownToLine, ArrowRight, ArrowUpRight, Check, ChevronLeft,
   ChevronRight, CircleHelp, Database, Download, FileJson, FileUp, Filter,
   LayoutDashboard, LockKeyhole, Menu, RotateCcw, Search, ShieldCheck,
-  SlidersHorizontal, UsersRound, X,
+  SlidersHorizontal, UsersRound, ScanSearch, ClipboardList, X,
 } from 'lucide-react';
 import {
   STORAGE_KEY, OLD_STORAGE_KEY, STATUSES, makeDemo, parseInstagramFiles,
   parseEvidence, applyEvidence, reviewCues, exportCsv, migrate,
 } from './lib/data.js';
 import { expandInstagramSelection } from './lib/import.js';
+import PocView from './PocView.jsx';
+import { createReviewJob, updateReviewItem, cancelReviewJob } from './lib/poc.js';
 
 const labels = {
   unreviewed: 'Unreviewed', review: 'Needs review', candidate: 'Removal candidate',
@@ -19,6 +21,8 @@ const nav = [
   ['overview', LayoutDashboard, 'Overview'],
   ['audience', UsersRound, 'Audience'],
   ['queue', Activity, 'Review queue'],
+  ['analysis', ScanSearch, 'Analysis'],
+  ['operations', ClipboardList, 'Action plans'],
   ['data', Database, 'Data sources'],
 ];
 const PAGE_SIZE = 25;
@@ -68,6 +72,7 @@ export default function App() {
   const [checked, setChecked] = useState(new Set());
   const [notice, setNotice] = useState('');
   const [mobileNav, setMobileNav] = useState(false);
+  const [locale, setLocale] = useState('en');
   const followersInput = useRef(null);
   const evidenceInput = useRef(null);
   const restoreInput = useRef(null);
@@ -108,7 +113,14 @@ export default function App() {
   function changeStatus(usernames, status) {
     if (!STATUSES.includes(status)) return;
     const keys = new Set(usernames);
-    setWorkspace(current => ({ ...current, people: current.people.map(person => keys.has(person.username.toLowerCase()) ? { ...person, status } : person) }));
+    setWorkspace(current => ({
+      ...current,
+      people: current.people.map(person => keys.has(person.username.toLowerCase()) ? { ...person, status } : person),
+      jobs: status === 'protected' ? (current.jobs || []).map(job => {
+        const items = job.items.map(item => keys.has(item.username.toLowerCase()) && item.status === 'approved_pending' ? { ...item, status: 'cancelled', updatedAt: new Date().toISOString() } : item);
+        return { ...job, items, status: items.every(item => item.status !== 'approved_pending') ? 'reviewed' : job.status };
+      }) : current.jobs,
+    }));
     setChecked(new Set());
     setNotice(`${keys.size} account${keys.size === 1 ? '' : 's'} marked ${labels[status].toLowerCase()}.`);
   }
@@ -171,6 +183,27 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(OLD_STORAGE_KEY);
     setWorkspace(makeDemo()); go('overview'); setNotice('Local workspace cleared.');
   }
+  function createPlan() {
+    if (workspace.mode !== 'import') { setNotice('Import your own data before making an action plan.'); return; }
+    try {
+      const job = createReviewJob(workspace.people, workspace.jobs || []);
+      setWorkspace(current => ({ ...current, jobs: [...(current.jobs || []), job] }));
+      setNotice(`${job.items.length} accounts approved for manual review. No Instagram action was performed.`);
+    } catch (error) { setNotice(error.message); }
+  }
+  function recordResult(jobId, username, status) {
+    if (workspace.people.find(person => person.username.toLowerCase() === username.toLowerCase())?.status !== 'candidate') {
+      setNotice('This account is no longer an approved candidate.'); return;
+    }
+    try {
+      setWorkspace(current => ({ ...current, jobs: (current.jobs || []).map(job => job.id === jobId ? updateReviewItem(job, username, status) : job) }));
+      setNotice('Manual result recorded. This app cannot verify the Instagram action.');
+    } catch (error) { setNotice(error.message); }
+  }
+  function cancelPlan(jobId) {
+    setWorkspace(current => ({ ...current, jobs: (current.jobs || []).map(job => job.id === jobId ? cancelReviewJob(job) : job) }));
+    setNotice('Pending manual actions cancelled.');
+  }
 
   return <div className="app">
     <header className="topbar">
@@ -205,6 +238,7 @@ export default function App() {
             <section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">02 / OPTIONAL PROFILE DATA</p><h2>Profile observations</h2></div><SlidersHorizontal size={21} strokeWidth={1.5} /></div><p className="data-description">Import a JSON array of profile observations from a source you are authorised to use. Only usernames already in your follower list will be matched.</p><input ref={evidenceInput} type="file" accept=".json,application/json" hidden onChange={event => handleEvidence(event.target.files[0])} /><button className="upload-button" onClick={() => evidenceInput.current.click()}><FileUp size={17} /> Select profile JSON <ArrowRight size={16} /></button><button className="text-action" onClick={() => download('profile-example.json', JSON.stringify([{ username: 'sample_account', followers_count: 120, following_count: 95, posts_count: 14, bio: 'Example only', is_private: false, is_verified: false, last_post_date: '2026-10-01' }], null, 2), 'application/json')}>Download example format <ArrowUpRight size={15} /></button><div className="source-summary"><Field label="Matched accounts" value={`${formatNumber(enriched)} / ${formatNumber(people.length)}`} /><Field label="Source" value={workspace.evidenceSource || 'Not supplied'} /></div></section></div>
           <div className="data-grid lower"><section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">03 / EXPORT</p><h2>Keep a copy</h2></div><Download size={21} strokeWidth={1.5} /></div><p className="data-description">CSV includes decisions and supplied observations. A session JSON restores the full workspace later.</p><div className="export-actions"><button className="primary-button" onClick={() => exportAll()}><Download size={16} /> Export CSV</button><button className="secondary-button" onClick={() => download('audience-review-session.json', JSON.stringify(workspace, null, 2), 'application/json')}><FileJson size={16} /> Save session</button><input ref={restoreInput} type="file" accept=".json,application/json" hidden onChange={event => handleRestore(event.target.files[0])} /><button className="secondary-button" onClick={() => restoreInput.current.click()}><RotateCcw size={16} /> Restore session</button></div></section><section className="surface data-main privacy-surface"><div className="surface-head"><div><p className="eyebrow">PRIVACY</p><h2>Local workspace</h2></div><LockKeyhole size={21} strokeWidth={1.5} /></div><p className="data-description">Your files and notes are stored in this browser profile. No account login, scraping, or automatic follower removal.</p><button className="danger-button" onClick={clearWorkspace}>Clear local workspace</button></section></div>
         </>}
+        {(view === 'analysis' || view === 'operations') && <PocView mode={view} workspace={workspace} locale={locale} setLocale={setLocale} onSelect={setSelected} onPlan={createPlan} onResult={recordResult} onCancel={cancelPlan} />}
       </main>
     </div>
     {selectedPerson && <div className="drawer-backdrop" onClick={() => setSelected(null)}><aside className="drawer" role="dialog" aria-modal="true" aria-label={`Account ${selectedPerson.username}`} onClick={event => event.stopPropagation()}><div className="drawer-top"><span>ACCOUNT DETAILS</span><button onClick={() => setSelected(null)} aria-label="Close details"><X size={20} /></button></div><div className="drawer-person"><Avatar name={selectedPerson.username} size="large" /><div><h2>@{selectedPerson.username}</h2><span>Instagram account</span></div></div><div className="drawer-body"><div className="drawer-section"><h3>Relationship</h3><Field label="Follower export" value="Present" /><Field label="Follows you back" value={selectedPerson.mutual === null ? 'Unknown' : selectedPerson.mutual ? 'Yes' : 'No'} /></div><div className="drawer-section"><h3>Profile observations</h3>{selectedPerson.profile ? <><Field label="Followers" value={selectedPerson.profile.followers_count?.toLocaleString()} /><Field label="Following" value={selectedPerson.profile.following_count?.toLocaleString()} /><Field label="Posts" value={selectedPerson.profile.posts_count?.toLocaleString()} /><Field label="Bio" value={selectedPerson.profile.bio === '' ? 'Empty in supplied data' : selectedPerson.profile.bio} /><Field label="Private" value={selectedPerson.profile.is_private === null ? null : selectedPerson.profile.is_private ? 'Yes' : 'No'} /><Field label="Verified" value={selectedPerson.profile.is_verified === null ? null : selectedPerson.profile.is_verified ? 'Yes' : 'No'} /><Field label="Latest supplied post" value={selectedPerson.profile.last_post_date} /><small>Source: {workspace.evidenceSource || 'Imported file'}</small></> : <p className="text-muted">No profile data supplied for this account.</p>}</div><div className="drawer-section"><h3>Review cues</h3>{reviewCues(selectedPerson.profile).length ? <ul className="cue-list">{reviewCues(selectedPerson.profile).map(cue => <li key={cue}>{cue}</li>)}</ul> : <p className="text-muted">No cues from available observations.</p>}<p className="caution"><CircleHelp size={15} /> These are context, not a fake-account verdict.</p></div><div className="drawer-section"><h3>Your decision</h3><div className="decision-grid">{STATUSES.map(status => <button key={status} className={selectedPerson.status === status ? 'selected' : ''} onClick={() => changeStatus([selectedPerson.username.toLowerCase()], status)}>{labels[status]}</button>)}</div></div><div className="drawer-section"><h3>Private note</h3><textarea value={selectedPerson.note} maxLength={2000} onChange={event => changeNote(selectedPerson.username, event.target.value)} placeholder="Add context for your decision" /></div></div><div className="drawer-bottom"><a href={`https://www.instagram.com/${encodeURIComponent(selectedPerson.username)}/`} target="_blank" rel="noopener noreferrer">Open on Instagram <ArrowUpRight size={16} /></a><span>Manual review only</span></div></aside></div>}

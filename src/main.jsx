@@ -4,5 +4,6 @@ import App from './App.jsx';
 import './styles.css';
 import './polish.css';
 import './suparise-inspired.css';
+import './poc.css';
 
 createRoot(document.getElementById('root')).render(<App />);
