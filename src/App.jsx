@@ -141,6 +141,11 @@ export default function App() {
   async function handleFollowers(files) {
     if (!files.length) return;
     try {
+      if (files.length === 1 && files[0].name.toLowerCase().endsWith('.json') && !/^(followers|following)(?:_\d+)?\.json$/i.test(files[0].name)) {
+        await importEvidence(files[0]);
+        followersInput.current.value = '';
+        return;
+      }
       const expanded = await expandInstagramSelection(files);
       const { data, errors } = await parseInstagramFiles(expanded, workspace);
       const previousNames = new Set(workspace.mode === 'import' ? workspace.people.map(person => person.username.toLowerCase()) : []);
@@ -153,7 +158,7 @@ export default function App() {
     } catch (error) { setNotice(error.message); }
     followersInput.current.value = '';
   }
-  async function handleEvidence(file) {
+  async function importEvidence(file) {
     if (!file) return;
     if (workspace.mode !== 'import') { setNotice('Import your own follower export before adding profile observations.'); return; }
     if (file.size > 20000000) { setNotice('Profile file is over the 20 MB limit.'); return; }
@@ -164,6 +169,9 @@ export default function App() {
       setWorkspace(result.data);
       setNotice(`${result.matched} profiles matched; ${result.unmatched} unmatched; ${invalid} invalid or empty.`);
     } catch (error) { setNotice(error.message); }
+  }
+  async function handleEvidence(file) {
+    await importEvidence(file);
     evidenceInput.current.value = '';
   }
   async function handleRestore(file) {
