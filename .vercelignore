@@ -1,0 +1,7 @@
+*.zip
+private-instagram-import/
+audience-review-session.json
+followers*.json
+following*.json
+profiles*.json
+profile-evidence*.json
