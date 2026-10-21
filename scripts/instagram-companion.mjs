@@ -34,7 +34,8 @@ async function openBrowser(requireLogin = false) {
   const context = await chromium.launchPersistentContext(profileDir, { executablePath, headless: false, viewport: { width: 1320, height: 880 } });
   const page = context.pages()[0] || await context.newPage();
   await page.goto(`https://www.instagram.com/${owner}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  if (page.url().includes('/accounts/login') || await page.locator('input[name="username"]').count() || (requireLogin && await page.getByRole('link', { name: 'Log In' }).count())) {
+  if (requireLogin) await page.locator('a[href*="/accounts/login/"], a[href*="/followers/"]').first().waitFor({ state: 'attached', timeout: 10000 }).catch(() => {});
+  if (page.url().includes('/accounts/login') || await page.locator('input[name="username"]').count() || (requireLogin && await page.locator('a[href*="/accounts/login/"]').count())) {
     await context.close();
     throw new Error('Log in to Instagram in the visible companion browser, then run the command again. No password is handled by this app.');
   }
@@ -44,6 +45,20 @@ async function openBrowser(requireLogin = false) {
 function checkPage(page) {
   const url = page.url();
   if (url.includes('/accounts/login') || url.includes('/challenge') || url.includes('/checkpoint')) throw new Error('Instagram requested login or verification; stopped.');
+}
+
+async function login() {
+  const context = await chromium.launchPersistentContext(profileDir, { executablePath, headless: false, viewport: { width: 1320, height: 880 } });
+  const page = context.pages()[0] || await context.newPage();
+  const prompt = createInterface({ input: stdin, output: stdout });
+  try {
+    await page.goto(`https://www.instagram.com/${owner}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await prompt.question('Log in to Instagram yourself in the open Chrome window, then press Enter here: ');
+    await page.goto(`https://www.instagram.com/${owner}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.locator('a[href*="/accounts/login/"], a[href*="/followers/"]').first().waitFor({ state: 'attached', timeout: 10000 }).catch(() => {});
+    if (await page.locator('a[href*="/accounts/login/"]').count()) throw new Error('Instagram still shows Log In. No session was saved.');
+    console.log('Instagram session available in the private companion browser profile. No password was stored by this app.');
+  } finally { prompt.close(); await context.close(); }
 }
 
 async function enrich() {
@@ -147,12 +162,13 @@ async function reconcile() {
   console.log(`Reconciled ${journal.targets.length} targets in ${journalFile}`);
 }
 
-if (!['enrich', 'remove', 'reconcile'].includes(command) || (command !== 'reconcile' && !owner)) {
+if (!['login', 'enrich', 'remove', 'reconcile'].includes(command) || (command !== 'reconcile' && !owner)) {
+  console.error('Usage: npm run companion -- login --owner USER [--chrome PATH]');
   console.error('Usage: npm run companion -- enrich --owner USER [--followers FILE] [--limit N] [--chrome PATH]');
   console.error('       npm run companion -- remove --owner USER --approval FILE [--execute --session FRESH_BACKUP.json] [--chrome PATH]');
   console.error('       npm run companion -- reconcile --journal FILE --followers NEW_EXPORT.json');
   process.exitCode = 1;
 } else {
-  try { await ({ enrich, remove, reconcile })[command](); }
+  try { await ({ login, enrich, remove, reconcile })[command](); }
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }
