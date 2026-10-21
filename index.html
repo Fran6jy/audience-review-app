@@ -1,47 +1,13 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#171717">
-  <title>Audience Review | Workspace</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>h1{font-size:44px}@media(max-width:700px){h1{font-size:35px}}</style>
-  <script src="app.js" defer></script>
-</head>
-<body>
-  <header class="topbar">
-    <div class="brand"><span class="brand-mark">a<span>.</span></span><span>audience<span class="brand-light">review</span></span></div>
-    <div class="topbar-end"><span class="privacy-dot"></span><span>Private workspace</span><button id="export-button" class="top-button" type="button" disabled>Export CSV ↗</button></div>
-  </header>
-  <div class="app-shell">
-    <aside class="sidebar" aria-label="Workspace navigation">
-      <div class="sidebar-group"><p class="side-caption">WORKSPACE</p>
-        <button class="nav-item active" data-view="overview" type="button"><span class="nav-symbol">▦</span>Overview</button>
-        <button class="nav-item" data-view="review" type="button"><span class="nav-symbol">≡</span>Review accounts <span id="nav-count" class="nav-count">0</span></button>
-        <button class="nav-item" data-view="data" type="button"><span class="nav-symbol">◫</span>Data & exports</button>
-      </div>
-      <div class="sidebar-bottom"><div class="side-rule"></div><div class="sidebar-source"><span class="source-square">IG</span><div><strong>Instagram export</strong><span id="source-state">Example workspace</span></div></div><p class="sidebar-note">Runs in your browser. No Instagram login or server connection.</p></div>
-    </aside>
-    <main class="main">
-      <section id="overview-view" class="view active" aria-labelledby="overview-title">
-        <div class="page-head"><div><p class="eyebrow">AUDIENCE INTELLIGENCE / LOCAL WORKSPACE</p><h1 id="overview-title">Your audience, <em>clearly.</em></h1><p class="subtitle">Review real relationships and make deliberate decisions.</p></div><button class="button button-dark" data-view="data" type="button">Import data ↗</button></div>
-        <div class="summary-grid">
-          <div class="metric"><span>Followers</span><strong id="metric-followers">0</strong><small>In current export</small></div>
-          <div class="metric"><span>Mutual follows</span><strong id="metric-mutual">—</strong><small id="mutual-caption">Following data needed</small></div>
-          <div class="metric"><span>Needs review</span><strong id="metric-review">0</strong><small>Flagged by you</small></div>
-          <div class="metric"><span>Protected</span><strong id="metric-protected">0</strong><small>Excluded from action</small></div>
-        </div>
-        <div class="overview-columns"><div class="overview-primary"><div class="section-header"><div><p class="section-kicker">WORK QUEUE</p><h2>Review progress</h2></div><button class="text-link" data-view="review" type="button">Open all accounts ↗</button></div><div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div><div class="progress-label"><strong id="progress-percent">0% reviewed</strong><span id="progress-ratio">0 of 0 accounts</span></div><div class="quick-list" id="quick-list"></div></div><div class="overview-secondary"><p class="section-kicker">DATA COVERAGE</p><h2>What we actually know</h2><div class="coverage-row"><span>Follower usernames</span><strong id="coverage-followers">—</strong></div><div class="coverage-row"><span>Mutual relationship</span><strong id="coverage-mutual">—</strong></div><div class="coverage-row"><span>Bio, posts, engagement</span><strong>Unavailable</strong></div><div class="coverage-row"><span>Fake or bot status</span><strong>Not inferred</strong></div><button class="text-link coverage-link" data-view="data" type="button">Inspect data sources ↗</button></div></div>
-        <p class="disclaimer">Non-mutual follows are not a sign of fraud. This workspace never labels people as bots or removes followers automatically.</p>
-      </section>
-      <section id="review-view" class="view" aria-labelledby="review-title">
-        <div class="page-head compact"><div><p class="eyebrow">ACCOUNT REVIEW</p><h1 id="review-title">Every account. <em>Your call.</em></h1><p class="subtitle">Protect, review, or clear accounts one by one.</p></div><button class="button button-dark" data-view="data" type="button">Import data ↗</button></div>
-        <div class="review-layout"><div class="review-table-area"><div class="list-toolbar"><div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search accounts" aria-label="Search accounts"></div><select id="filter" aria-label="Filter accounts"><option value="all">All accounts</option><option value="pending">Unreviewed</option><option value="review">Needs review</option><option value="protected">Protected</option><option value="cleared">Cleared</option><option value="mutual">Mutual</option><option value="nonmutual">Not mutual</option></select></div><div class="bulkbar"><label><input id="select-page" type="checkbox"> Select visible</label><span id="selection-count">0 selected</span><div class="bulk-actions"><button type="button" data-bulk="review">Mark for review</button><button type="button" data-bulk="protected">Protect</button><button type="button" data-bulk="cleared">Clear</button></div></div><div class="table-scroll"><table><thead><tr><th>ACCOUNT</th><th>RELATIONSHIP</th><th>DECISION</th><th>OPEN</th></tr></thead><tbody id="account-rows"></tbody></table><div id="empty-list" class="empty-list" hidden>No accounts match this view.</div></div><div class="table-footer"><span id="list-count">0 accounts</span><div><button id="prev-page" type="button">Previous</button><span id="page-label">Page 1</span><button id="next-page" type="button">Next</button></div></div></div><aside class="detail-panel" aria-label="Account details"><div id="detail-content" class="detail-empty">Select an account to review its available evidence.</div></aside></div>
-      </section>
-      <section id="data-view" class="view" aria-labelledby="data-title"><div class="page-head compact"><div><p class="eyebrow">DATA MANAGEMENT</p><h1 id="data-title">Evidence in. <em>Decisions out.</em></h1><p class="subtitle">Your export stays on this device unless you choose to share it.</p></div></div><div class="data-layout"><div><div class="data-block"><p class="section-kicker">01 / IMPORT</p><h2>Instagram data</h2><p>Choose follower and following JSON files from an account you own or manage. Supported names include <code>followers_1.json</code> and <code>following.json</code>.</p><label class="upload-zone" for="file-input"><span class="upload-icon">↑</span><strong>Select JSON files</strong><small>Multiple files accepted · processed in your browser</small></label><input id="file-input" type="file" accept=".json,application/json" multiple hidden><div id="import-status" class="status-line" role="status">Example data loaded.</div></div><div class="data-block"><p class="section-kicker">02 / EXPORT</p><h2>Take your work with you</h2><p>Download a CSV of account relationships, decisions, and notes. Re-import a session JSON to restore those decisions later.</p><div class="data-actions"><button id="export-data" class="button button-dark" type="button">Export CSV ↗</button><button id="save-session" class="button button-outline" type="button">Save session JSON</button><label class="button button-outline file-button" for="session-input">Restore session</label><input id="session-input" type="file" accept=".json,application/json" hidden></div></div></div><aside class="data-side"><p class="section-kicker">SOURCE REGISTER</p><h2>Coverage & limits</h2><div class="source-item"><span>01</span><div><strong>Follower list</strong><small id="source-followers">Example data</small></div></div><div class="source-item"><span>02</span><div><strong>Following list</strong><small id="source-following">Example data</small></div></div><div class="source-item"><span>03</span><div><strong>Profile enrichment</strong><small>Not connected</small></div></div><div class="source-item"><span>04</span><div><strong>Follower removal</strong><small>Not connected</small></div></div><div class="data-warning"><strong>Privacy boundary</strong><p>The app makes no network requests for account data. Browser storage keeps your decisions on this device; clear this workspace before using a shared computer.</p></div><button id="clear-workspace" class="danger-link" type="button">Clear local workspace</button></aside></div></section>
-    </main>
-  </div>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171717" />
+    <title>Audience Review</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

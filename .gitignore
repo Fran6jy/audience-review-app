@@ -5,3 +5,10 @@ audience-review.csv
 audience-review-session.json
 followers*.json
 following*.json
+profiles*.json
+profile-evidence*.json
+node_modules/
+dist/
+.vercel/
+
+.vercel
