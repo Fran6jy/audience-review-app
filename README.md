@@ -1,26 +1,27 @@
 # Audience Review
 
-A private, browser-based prototype for reviewing an Instagram account owner's exported follower data. This is a portfolio/demo project, not an Instagram integration.
+A browser-based workspace for reviewing an Instagram account owner's exported followers. The visual design takes inspiration from the editorial contrast and clarity of [Lefty](https://lefty.io/) without using its branding, assets, or proprietary interface.
 
 ## Run
 
-Open `index.html` in a modern browser. No install, server, account, or API key is required. Choose **Load example** to explore the interface with synthetic data.
+Open `index.html` in a modern browser. No build step, account, API key, or server is required. The initial workspace uses clearly synthetic example accounts.
 
-To use your own data, request your Instagram information export in JSON format, then select `followers_1.json` (or `followers.json`) and `following.json` from the export. The files are read locally in your browser tab and are not uploaded by this app. Use **Export review CSV** to keep a copy of your decisions before closing the tab.
+To use your own data, export your Instagram information in JSON format. In **Data & exports**, select `followers_1.json` (or `followers.json`) and `following.json`. The importer also accepts numbered follower files, such as `followers_2.json`. The files are parsed locally in your browser.
 
-## Current scope
+## Features
 
-- Import follower and following JSON files.
-- Show mutual-follow status when a following file is provided.
-- Search and filter accounts.
-- Mark accounts as protected or for manual review.
-- Export a CSV of accounts and decisions.
-- Run entirely client-side with no credentials or backend.
+- Overview with audience counts, review progress, and explicit data coverage.
+- Searchable, paginated account review with relationship and decision filters.
+- Individual decisions: unreviewed, needs review, protected, or cleared.
+- Private notes and bulk decisions for selected accounts.
+- Local browser storage to restore your workspace on the same device.
+- CSV export and JSON session backup/restore.
+- Responsive desktop and mobile layouts.
 
-## Limitations
+## Boundaries
 
-This prototype does not connect to Instagram, fetch live profile data, identify bots, measure engagement, or remove followers. A non-mutual follow is not evidence of spam or inactivity. Review decisions are kept only in memory and disappear when the tab closes unless exported.
+The app does not log into Instagram, fetch live profile data, classify bots, or remove followers. The export does not provide enough evidence for those claims. A non-mutual follow is not a suspicious signal by itself.
 
-The app renders the first 500 rows matching a filter to keep large exports responsive; its counts and CSV export cover all imported rows. The importer recognises Instagram-style `followers_*.json` and `following.json` files; export formats may change.
+Account data and notes remain in the browser profile's local storage unless you export them. This is convenient on a personal device but not appropriate on a shared computer. **Clear local workspace** removes the saved data. The app includes no analytics scripts or automatic third-party requests. Opening a profile link will navigate to Instagram.
 
-Only use data from accounts you own or are authorised to manage. Do not publish real follower exports as demo data.
+Use only exports from accounts you own or are authorised to manage. Never commit real exports or session backups to a public repository.

@@ -2,5 +2,6 @@
 Thumbs.db
 *.zip
 audience-review.csv
+audience-review-session.json
 followers*.json
 following*.json
