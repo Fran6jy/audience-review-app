@@ -5,6 +5,7 @@
 .language-switch button { border: 0; background: #fff; padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer; }
 .language-switch button.active { background: #202e28; color: #fff; }
 .analysis-counts, .operations-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+.analysis-counts { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .analysis-counts button, .operations-summary>div { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-height: 105px; padding: 18px; border: 1px solid #dadfd8; border-radius: 5px; background: #fff; color: #20332a; text-align: left; font: inherit; }
 .analysis-counts button { cursor: pointer; }
 .analysis-counts button.active { border-color: #407b52; box-shadow: inset 0 0 0 1px #407b52; }
@@ -31,6 +32,7 @@
 .analysis-row>svg { position: absolute; right: 8px; display: none; }
 .assessment { color: #445d4e; }
 .assessment-potential_spam { color: #a14732; }
+.assessment-potential_bot { color: #a14732; }
 .assessment-potentially_inactive { color: #95691e; }
 .analysis-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 14px 0 25px; color: #627166; font-size: 14px; }
 .analysis-pager>div { display: flex; gap: 7px; }
@@ -60,6 +62,19 @@
 .job-item { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(160px, 1fr) minmax(180px, 1fr) minmax(190px, auto); gap: 12px; align-items: center; padding: 13px 20px; border-top: 1px solid #e8ede7; font-size: 14px; }
 .job-item strong { overflow-wrap: anywhere; }
 .job-item a { display: inline-flex; gap: 5px; align-items: center; color: #216f49; }
+.admin-page { max-width: 1440px; margin: 0 auto; }
+.admin-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+.admin-metrics>div { display: grid; gap: 8px; padding: 18px; border: 1px solid #dadfd8; border-radius: 5px; background: #fff; }
+.admin-metrics strong { font-size: 28px; }
+.admin-metrics span { color: #617269; font-size: 14px; }
+.admin-section { border-top: 1px solid #dadfd8; padding: 20px 0; }
+.admin-section h2 { margin: 0 0 15px; font-size: 20px; }
+.admin-section p, .admin-note { color: #617269; font-size: 14px; line-height: 1.5; }
+.admin-list { display: grid; }
+.admin-list>div { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1fr) minmax(220px, 2fr); gap: 16px; padding: 12px 0; border-top: 1px solid #e8ede7; font-size: 14px; }
+.admin-list strong, .admin-list small { overflow-wrap: anywhere; }
+.admin-list small { color: #617269; }
 .poc-empty { padding: 24px; color: #66776b; font-size: 14px; }
 @media (max-width: 950px) { .analysis-coverage { flex-direction: column; } .coverage-tags { justify-content: flex-start; max-width: none; } .analysis-head { display: none; } .analysis-row { grid-template-columns: minmax(110px, 1fr) minmax(120px, 1fr) 70px 65px; } .analysis-row>span:last-of-type { grid-column: 1 / -1; } .job-item { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .poc-page .page-title { align-items: flex-start; flex-direction: column; } .analysis-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .operations-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .operations-summary>div { padding: 12px; min-height: 94px; } .operations-summary strong { font-size: 24px; } .operations-lead { flex-direction: column; align-items: stretch; } .analysis-toolbar { flex-direction: column; } .analysis-toolbar select { min-width: 0; } .analysis-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 14px; } .analysis-row>span:last-of-type { grid-column: 1 / -1; } .analysis-row>svg { display: block; top: 14px; } .job-head { align-items: flex-start; flex-direction: column; } .job-item { grid-template-columns: 1fr; gap: 8px; } .job-item select { width: 100%; } }
+@media (max-width: 620px) { .admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .admin-list>div { grid-template-columns: 1fr 1fr; gap: 4px 10px; } .admin-list small { grid-column: 1 / -1; } }

@@ -35,9 +35,10 @@ test('journal import is bound to the exact approved owner and targets', () => {
 });
 
 test('execution checks current candidate and pending-plan protections', () => {
-  const packet = { id: 'review-123', owner: 'fran6jy_flows' };
-  const workspace = { mode: 'import', people: [{ username: 'alice', status: 'candidate' }], jobs: [{ id: packet.id, owner: packet.owner, status: 'awaiting_manual_action', items: [{ username: 'alice', status: 'approved_pending' }] }] };
+  const packet = { id: 'review-123', owner: 'fran6jy_flows', approvedAt: new Date(Date.now() - 2 * 60000).toISOString() };
+  const workspace = { mode: 'import', savedAt: new Date().toISOString(), people: [{ username: 'alice', status: 'candidate' }], jobs: [{ id: packet.id, owner: packet.owner, status: 'awaiting_manual_action', items: [{ username: 'alice', status: 'approved_pending' }] }] };
   assert.equal(assertExecutionApproved(workspace, packet, 'alice'), true);
+  assert.throws(() => assertExecutionApproved({ ...workspace, savedAt: new Date(Date.now() - 11 * 60000).toISOString() }, packet, 'alice'), /new session backup/);
   assert.throws(() => assertExecutionApproved({ ...workspace, people: [{ username: 'alice', status: 'protected' }] }, packet, 'alice'), /no longer/);
   assert.throws(() => assertExecutionApproved({ ...workspace, jobs: [{ ...workspace.jobs[0], status: 'cancelled' }] }, packet, 'alice'), /not pending/);
 });

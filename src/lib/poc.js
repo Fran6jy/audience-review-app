@@ -1,4 +1,5 @@
 const evidenceFields = [
+  'user_id', 'display_name', 'profile_picture_url',
   'followers_count', 'following_count', 'posts_count', 'bio',
   'is_private', 'is_verified', 'last_post_date',
   'average_likes', 'average_comments', 'sample_size',
@@ -16,19 +17,22 @@ export function assessFollower(person, today = new Date()) {
   const p = person.profile;
   if (!p) return { label: 'insufficient', score: null, confidence: 'none', reasons: [], available: 0, total: evidenceFields.length };
   const available = evidenceFields.filter(field => p[field] !== null && p[field] !== undefined).length;
-  if (available < 3) return { label: 'insufficient', score: null, confidence: 'low', reasons: [], available, total: evidenceFields.length };
+  const signalFields = ['followers_count', 'following_count', 'posts_count', 'bio', 'is_private', 'is_verified', 'last_post_date', 'average_likes', 'average_comments', 'sample_size'];
+  if (signalFields.filter(field => p[field] !== null && p[field] !== undefined).length < 3) return { label: 'insufficient', score: null, confidence: 'low', reasons: [], available, total: evidenceFields.length };
 
   let score = 0;
   const reasons = [];
   const followers = p.followers_count;
   const following = p.following_count;
-  if (Number.isInteger(followers) && Number.isInteger(following) && following >= 1000 && followers <= 50) {
+  const followingImbalance = Number.isInteger(followers) && Number.isInteger(following) && following >= 1000 && followers <= 50;
+  if (followingImbalance) {
     score += 45;
     reasons.push('High following count relative to supplied follower count');
   }
   if (p.posts_count === 0) { score += 15; reasons.push('No posts visible in supplied observations'); }
   if (p.bio === '') { score += 10; reasons.push('Empty bio in supplied observations'); }
-  if (Number.isInteger(p.sample_size) && p.sample_size >= 5 && Number.isFinite(p.average_likes) && Number.isFinite(p.average_comments) && p.average_likes + p.average_comments <= 1) {
+  const lowSampledEngagement = Number.isInteger(p.sample_size) && p.sample_size >= 5 && Number.isFinite(p.average_likes) && Number.isFinite(p.average_comments) && p.average_likes + p.average_comments <= 1;
+  if (lowSampledEngagement) {
     score += 25;
     reasons.push(`Low engagement across ${p.sample_size} supplied public posts`);
   }
@@ -43,9 +47,10 @@ export function assessFollower(person, today = new Date()) {
   }
   score = Math.min(score, 100);
   let label = 'no_signals';
-  if (score >= 60 && reasons.length >= 2) label = 'potential_spam';
+  if (followingImbalance && lowSampledEngagement && reasons.length >= 3 && score >= 70) label = 'potential_bot';
+  else if (score >= 60 && reasons.length >= 2) label = 'potential_spam';
   else if (oldPost) label = 'potentially_inactive';
-  const confidence = available >= 7 && p.sample_size >= 5 ? 'medium' : 'low';
+  const confidence = signalFields.filter(field => p[field] !== null && p[field] !== undefined).length >= 7 && p.sample_size >= 5 ? 'medium' : 'low';
   return { label, score, confidence, reasons, available, total: evidenceFields.length };
 }
 

@@ -8,6 +8,7 @@ test('assessment does not treat private or non-mutual alone as spam', () => {
   assert.equal(assessFollower(person(null)).label, 'insufficient');
   assert.equal(assessFollower(person({ is_private: true, is_verified: false, bio: 'Hello' })).label, 'no_signals');
   assert.equal(assessFollower(person({ followers_count: 10, following_count: 1200, posts_count: 0, bio: '' })).label, 'potential_spam');
+  assert.equal(assessFollower(person({ followers_count: 10, following_count: 1200, posts_count: 8, bio: '', sample_size: 5, average_likes: 0, average_comments: 0 })).label, 'potential_bot');
   assert.equal(assessFollower(person({ posts_count: 3, bio: 'Hello', last_post_date: '2020-01-01' }), new Date('2026-10-21')).label, 'potentially_inactive');
 });
 

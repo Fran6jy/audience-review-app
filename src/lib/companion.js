@@ -66,6 +66,9 @@ export function applyActionJournal(job, journal) {
 
 export function assertExecutionApproved(workspace, packet, username) {
   if (workspace?.mode !== 'import' || !Array.isArray(workspace.people) || !Array.isArray(workspace.jobs)) throw new Error('A current imported workspace backup is required.');
+  const savedAt = Date.parse(workspace.savedAt);
+  const approvedAt = Date.parse(packet.approvedAt);
+  if (!Number.isFinite(savedAt) || !Number.isFinite(approvedAt) || savedAt < approvedAt || savedAt > Date.now() + 60000 || Date.now() - savedAt > 10 * 60000) throw new Error('Save a new session backup after approval, within 10 minutes of execution.');
   const job = workspace.jobs.find(item => item.id === packet.id && item.owner?.toLowerCase() === packet.owner.toLowerCase());
   if (!job || job.status === 'cancelled' || !job.items.some(item => item.username.toLowerCase() === username.toLowerCase() && item.status === 'approved_pending')) throw new Error(`@${username} is not pending in this workspace backup.`);
   if (!workspace.people.some(person => person.username.toLowerCase() === username.toLowerCase() && person.status === 'candidate')) throw new Error(`@${username} is no longer an approved candidate.`);

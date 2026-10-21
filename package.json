@@ -11,6 +11,7 @@
     "companion": "node scripts/instagram-companion.mjs"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "jszip": "^3.10.2",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
@@ -19,5 +20,8 @@
   "devDependencies": {
     "playwright-core": "^1.64.1",
     "vite": "^6.0.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

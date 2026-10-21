@@ -85,9 +85,11 @@ export async function parseInstagramFiles(files, previous = null) {
 const count = value => Number.isInteger(value) && value >= 0 && value <= 1000000000 ? value : null;
 export function normalizeProfile(record) {
   const nonNegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1000000000 ? value : null;
+  const picture = typeof record.profile_picture_url === 'string' ? record.profile_picture_url : '';
   return {
     user_id: typeof record.user_id === 'string' && /^\d{1,30}$/.test(record.user_id) ? record.user_id : null,
     display_name: typeof record.display_name === 'string' ? record.display_name.slice(0, 100) : null,
+    profile_picture_url: /^https:\/\//i.test(picture) && picture.length <= 2000 ? picture : null,
     followers_count: count(record.followers_count),
     following_count: count(record.following_count),
     posts_count: count(record.posts_count),
@@ -143,14 +145,18 @@ function csvCell(value) {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
-export function exportCsv(workspace, onlyCandidates = false) {
-  const columns = ['username', 'profile_url', 'mutual', 'decision', 'note', 'user_id', 'display_name', 'followers_count', 'following_count', 'posts_count', 'bio', 'is_private', 'is_verified', 'last_post_date', 'average_likes', 'average_comments', 'sample_size', 'observed_at'];
+export function exportRows(workspace, onlyCandidates = false) {
+  const columns = ['username', 'profile_url', 'mutual', 'decision', 'note', 'user_id', 'display_name', 'profile_picture_url', 'followers_count', 'following_count', 'posts_count', 'bio', 'is_private', 'is_verified', 'last_post_date', 'average_likes', 'average_comments', 'sample_size', 'observed_at'];
   const people = onlyCandidates ? workspace.people.filter(person => person.status === 'candidate') : workspace.people;
   const rows = people.map(person => [
     person.username, `https://www.instagram.com/${person.username}/`, person.mutual === null ? 'unknown' : person.mutual ? 'yes' : 'no', person.status, person.note,
     ...columns.slice(5).map(key => person.profile?.[key] ?? ''),
   ]);
-  return '\ufeff' + [columns, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+  return [columns, ...rows];
+}
+
+export function exportCsv(workspace, onlyCandidates = false) {
+  return '\ufeff' + exportRows(workspace, onlyCandidates).map(row => row.map(csvCell).join(',')).join('\r\n');
 }
 
 export function migrate(old) {

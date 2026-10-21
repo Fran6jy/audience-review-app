@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyEvidence, exportCsv, getInstagramNames, migrate, normalizeProfile, parseEvidence, parseInstagramFiles, reviewCues } from '../src/lib/data.js';
+import { applyEvidence, exportCsv, exportRows, getInstagramNames, migrate, normalizeProfile, parseEvidence, parseInstagramFiles, reviewCues } from '../src/lib/data.js';
 
 const file = (name, data) => ({ name, text: async () => JSON.stringify(data) });
 
@@ -23,6 +23,14 @@ test('marks mutual status unavailable without following data', async () => {
   const { data } = await parseInstagramFiles([file('followers.json', [{ string_list_data: [{ value: 'alice' }] }])]);
   assert.equal(data.people[0].mutual, null);
   assert.equal(data.hasFollowing, false);
+});
+
+test('retains safe picture URLs and exposes them in exports', () => {
+  const profile = normalizeProfile({ profile_picture_url: 'https://example.com/avatar.jpg' });
+  assert.equal(profile.profile_picture_url, 'https://example.com/avatar.jpg');
+  assert.equal(normalizeProfile({ profile_picture_url: 'javascript:alert(1)' }).profile_picture_url, null);
+  const rows = exportRows({ people: [{ username: 'alice', mutual: null, status: 'unreviewed', note: '', profile }] });
+  assert.equal(rows[1][rows[0].indexOf('profile_picture_url')], 'https://example.com/avatar.jpg');
 });
 
 test('rejects unsupported exports and malformed evidence', async () => {
