@@ -9,6 +9,7 @@ import {
   STORAGE_KEY, OLD_STORAGE_KEY, STATUSES, makeDemo, parseInstagramFiles,
   parseEvidence, applyEvidence, reviewCues, exportCsv, migrate,
 } from './lib/data.js';
+import { expandInstagramSelection } from './lib/import.js';
 
 const labels = {
   unreviewed: 'Unreviewed', review: 'Needs review', candidate: 'Removal candidate',
@@ -127,10 +128,15 @@ export default function App() {
   async function handleFollowers(files) {
     if (!files.length) return;
     try {
-      const { data, errors } = await parseInstagramFiles(files, workspace);
+      const expanded = await expandInstagramSelection(files);
+      const { data, errors } = await parseInstagramFiles(expanded, workspace);
+      const previousNames = new Set(workspace.mode === 'import' ? workspace.people.map(person => person.username.toLowerCase()) : []);
+      const currentNames = new Set(data.people.map(person => person.username.toLowerCase()));
+      const added = [...currentNames].filter(name => !previousNames.has(name)).length;
+      const departed = [...previousNames].filter(name => !currentNames.has(name)).length;
       setWorkspace(data); setSelected(null); setChecked(new Set());
       go('overview');
-      setNotice(`${formatNumber(data.people.length)} followers imported.${errors.length ? ` ${errors.join('; ')}` : ''}`);
+      setNotice(`${formatNumber(data.people.length)} followers imported.${previousNames.size ? ` ${added} new, ${departed} no longer in this export.` : ''}${errors.length ? ` ${errors.join('; ')}` : ''}`);
     } catch (error) { setNotice(error.message); }
     followersInput.current.value = '';
   }
@@ -200,7 +206,7 @@ export default function App() {
         </>}
         {view === 'data' && <>
           <div className="page-title"><div><p className="eyebrow">WORKSPACE / DATA</p><h1>Data sources</h1><p>Imports stay in this browser unless you export them.</p></div></div>
-          <div className="data-grid"><section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">01 / INSTAGRAM EXPORT</p><h2>Follower lists</h2></div><FileJson size={21} strokeWidth={1.5} /></div><p className="data-description">Choose followers_1.json and following.json from an account you own or manage. Multiple numbered follower files are supported.</p><input ref={followersInput} type="file" accept=".json,application/json" multiple hidden onChange={event => handleFollowers([...event.target.files])} /><button className="upload-button" onClick={() => followersInput.current.click()}><FileUp size={17} /> Select Instagram JSON files <ArrowRight size={16} /></button><div className="source-summary"><Field label="Followers" value={formatNumber(people.length)} /><Field label="Following list" value={workspace.hasFollowing ? 'Included' : 'Not supplied'} /><Field label="Imported" value={workspace.importedAt ? new Date(workspace.importedAt).toLocaleString('en-GB') : 'Sample data'} /></div></section>
+          <div className="data-grid"><section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">01 / INSTAGRAM EXPORT</p><h2>Follower lists</h2></div><FileJson size={21} strokeWidth={1.5} /></div><p className="data-description">Choose the downloaded Instagram ZIP, or select followers_1.json and following.json. The app extracts follower files locally and keeps your decisions on the next import.</p><input ref={followersInput} type="file" accept=".zip,application/zip,.json,application/json" multiple hidden onChange={event => handleFollowers([...event.target.files])} /><button className="upload-button" onClick={() => followersInput.current.click()}><FileUp size={17} /> Select Instagram ZIP or JSON <ArrowRight size={16} /></button><div className="source-summary"><Field label="Followers" value={formatNumber(people.length)} /><Field label="Following list" value={workspace.hasFollowing ? 'Included' : 'Not supplied'} /><Field label="Imported" value={workspace.importedAt ? new Date(workspace.importedAt).toLocaleString('en-GB') : 'Sample data'} /></div></section>
             <section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">02 / OPTIONAL PROFILE DATA</p><h2>Profile observations</h2></div><SlidersHorizontal size={21} strokeWidth={1.5} /></div><p className="data-description">Import a JSON array of profile observations from a source you are authorised to use. Only usernames already in your follower list will be matched.</p><input ref={evidenceInput} type="file" accept=".json,application/json" hidden onChange={event => handleEvidence(event.target.files[0])} /><button className="upload-button" onClick={() => evidenceInput.current.click()}><FileUp size={17} /> Select profile JSON <ArrowRight size={16} /></button><button className="text-action" onClick={() => download('profile-example.json', JSON.stringify([{ username: 'sample_account', followers_count: 120, following_count: 95, posts_count: 14, bio: 'Example only', is_private: false, is_verified: false, last_post_date: '2026-10-01' }], null, 2), 'application/json')}>Download example format <ArrowUpRight size={15} /></button><div className="source-summary"><Field label="Matched accounts" value={`${formatNumber(enriched)} / ${formatNumber(people.length)}`} /><Field label="Source" value={workspace.evidenceSource || 'Not supplied'} /></div></section></div>
           <div className="data-grid lower"><section className="surface data-main"><div className="surface-head"><div><p className="eyebrow">03 / EXPORT</p><h2>Keep a copy</h2></div><Download size={21} strokeWidth={1.5} /></div><p className="data-description">CSV includes decisions and supplied observations. A session JSON restores the full workspace later.</p><div className="export-actions"><button className="primary-button" onClick={() => exportAll()}><Download size={16} /> Export CSV</button><button className="secondary-button" onClick={() => download('audience-review-session.json', JSON.stringify(workspace, null, 2), 'application/json')}><FileJson size={16} /> Save session</button><input ref={restoreInput} type="file" accept=".json,application/json" hidden onChange={event => handleRestore(event.target.files[0])} /><button className="secondary-button" onClick={() => restoreInput.current.click()}><RotateCcw size={16} /> Restore session</button></div></section><section className="surface data-main privacy-surface"><div className="surface-head"><div><p className="eyebrow">PRIVACY</p><h2>Local workspace</h2></div><LockKeyhole size={21} strokeWidth={1.5} /></div><p className="data-description">Your files and notes are stored in this browser profile. No account login, scraping, or automatic follower removal.</p><button className="danger-button" onClick={clearWorkspace}>Clear local workspace</button></section></div>
         </>}

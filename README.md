@@ -6,7 +6,7 @@ A browser-based workspace for reviewing an Instagram account owner's exported fo
 
 Run `npm install`, then `npm run dev` and open the Vite URL. Use `npm test` for data tests and `npm run build` for a production build. No account or API key is required; the initial workspace contains synthetic accounts.
 
-To use your own data, export your Instagram information in JSON format. In **Data sources**, select `followers_1.json` (or `followers.json`) and optionally `following.json`. The importer also accepts numbered follower files, such as `followers_2.json`. The files are parsed locally in your browser.
+To use your own data, export your Instagram information in JSON format. In **Data sources**, select the downloaded ZIP directly, or select `followers_1.json` (or `followers.json`) and optionally `following.json`. The importer also accepts numbered follower files, such as `followers_2.json`. ZIP extraction and parsing happen locally in your browser. Re-importing a newer export preserves decisions for usernames still present and reports how many are new or no longer in the export.
 
 ## Features
 
@@ -29,7 +29,7 @@ The app does not collect this information itself and does not independently veri
 
 ## Boundaries
 
-The app does not log into Instagram, fetch live profile data, classify bots, or remove followers. The export does not provide enough evidence for those claims. A non-mutual follow is not a suspicious signal by itself.
+The app does not log into Instagram, sync followers in the background, fetch live profile data, classify bots, or remove followers. You still need to request a fresh export from Instagram when you want new data. The export does not provide enough evidence for bot claims. A non-mutual follow is not a suspicious signal by itself.
 
 Account data and notes remain in the browser profile's local storage unless you export them. This is convenient on a personal device but not appropriate on a shared computer. **Clear local workspace** removes the saved data. The app includes no analytics scripts or automatic third-party requests. Opening a profile link will navigate to Instagram.
 
